@@ -200,7 +200,7 @@ let lastGestureTime = 0;
 let currentSpeed = 1.0;
 let isCameraStarted = false;
 
-const worker = new Worker('worker.js');
+const worker = new Worker('/worker.js');
 
 worker.onmessage = async (e) => {
   const { type, data, error } = e.data;
