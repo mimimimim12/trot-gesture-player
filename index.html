@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>✨ 트로트 제스처 플레이어</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
-  
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet" />
+
   <style>
     /* 스타일은 그대로 유지 */
     :root {
@@ -199,7 +199,9 @@ const loader = document.getElementById('loader');
 let lastGestureTime = 0;
 let currentSpeed = 1.0;
 let isCameraStarted = false;
+let isPlaying = false;  // 재생 상태 플래그
 
+// Web Worker 경로가 배포 환경에 맞는지 반드시 확인하세요!
 const worker = new Worker('/worker.js');
 
 worker.onmessage = async (e) => {
@@ -217,13 +219,16 @@ worker.onmessage = async (e) => {
       statusDiv.textContent = "mp3 → wav 변환 완료! 재생합니다.";
       loader.style.display = 'none';
 
-      if (audioElement.paused) {
-        await audioElement.play().catch(err => {
+      // play() 호출 전 상태 플래그 세팅 및 에러 무시 처리
+      isPlaying = true;
+      await audioElement.play().catch(err => {
+        if (err.name !== 'AbortError') {
           console.warn("자동 재생 실패:", err);
-        });
-      }
+        }
+      });
     } catch (err) {
       statusDiv.textContent = `오디오 처리 오류: ${err.message}`;
+      loader.style.display = 'none';
     }
   } else if (type === 'conversion-error') {
     statusDiv.textContent = `변환 오류: ${error}`;
@@ -248,18 +253,43 @@ fileInput.addEventListener('change', async (e) => {
 
   if (file.type === "audio/wav") {
     audioElement.src = URL.createObjectURL(file);
-    if (audioElement.paused) {
-      await audioElement.play().catch(err => {
-        console.warn("재생 오류:", err);
-      });
+    isPlaying = true;
+    try {
+      await audioElement.play();
+      statusDiv.textContent = "WAV 음악 재생 중...";
+    } catch(err) {
+      statusDiv.textContent = "WAV 음악 재생 실패: 유저 조작 필요";
     }
-    statusDiv.textContent = "WAV 음악 재생 중...";
   } else if (file.type === "audio/mp3" || file.name.endsWith('.mp3')) {
     worker.postMessage(file);
   } else {
     statusDiv.textContent = "지원하지 않는 파일 형식입니다.";
   }
 });
+
+// audio 이벤트 리스너로 isPlaying 상태 동기화
+audioElement.addEventListener('play', () => { isPlaying = true; });
+audioElement.addEventListener('pause', () => { isPlaying = false; });
+
+// 제스처에 의한 play/pause 호출 시 충돌 방지용 함수
+async function safePlay() {
+  if (!isPlaying) {
+    try {
+      isPlaying = true;
+      await audioElement.play();
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.warn('play() 오류:', err);
+      }
+    }
+  }
+}
+function safePause() {
+  if (isPlaying) {
+    audioElement.pause();
+    isPlaying = false;
+  }
+}
 
 const hands = new Hands({
   locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
@@ -309,7 +339,7 @@ function isPinkyOnly(landmarks) {
           isFingerExtended(landmarks, 20, 18, 0.05));
 }
 
-function onResults(results) {
+async function onResults(results) {
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
@@ -323,11 +353,11 @@ function onResults(results) {
       if (now - lastGestureTime < 700) continue;
 
       if (isFist(landmarks)) {
-        if (!audioElement.paused) {
-          audioElement.pause();
+        if (isPlaying) {
+          safePause();
           statusDiv.textContent = "제스처: 주먹 (음악 정지)";
         } else {
-          audioElement.play().catch(err => console.warn("재생 실패:", err));
+          await safePlay();
           statusDiv.textContent = "제스처: 주먹 (음악 재생)";
         }
         lastGestureTime = now;
@@ -335,7 +365,7 @@ function onResults(results) {
         if (currentSpeed !== 1.5) {
           currentSpeed = 1.5;
           audioElement.playbackRate = currentSpeed;
-          audioElement.play().catch(err => console.warn("재생 실패:", err));
+          await safePlay();
           statusDiv.textContent = "제스처: 손바닥 (속도 1.5x)";
           lastGestureTime = now;
         }
@@ -343,7 +373,7 @@ function onResults(results) {
         if (currentSpeed !== 2.0) {
           currentSpeed = 2.0;
           audioElement.playbackRate = currentSpeed;
-          audioElement.play().catch(err => console.warn("재생 실패:", err));
+          await safePlay();
           statusDiv.textContent = "제스처: 엄지 (속도 2.0x)";
           lastGestureTime = now;
         }
@@ -351,7 +381,7 @@ function onResults(results) {
         if (currentSpeed !== 1.0) {
           currentSpeed = 1.0;
           audioElement.playbackRate = currentSpeed;
-          audioElement.play().catch(err => console.warn("재생 실패:", err));
+          await safePlay();
           statusDiv.textContent = "제스처: 새끼손가락 (속도 1.0x)";
           lastGestureTime = now;
         }
