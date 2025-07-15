@@ -1,3 +1,4 @@
+# requirements.txt
 absl-py==2.3.1
 attrs==25.3.0
 cffi==1.17.1
@@ -12,8 +13,8 @@ matplotlib==3.10.3
 mediapipe==0.10.14
 ml_dtypes==0.5.1
 numpy==2.2.6
-opencv-contrib-python==4.12.0.88
 opencv-python==4.12.0.88
+# opencv-contrib-python==4.12.0.88  # 이 줄은 주석 처리하여 설치하지 않습니다.
 opt_einsum==3.4.0
 packaging==25.0
 pillow==11.3.0
@@ -22,6 +23,6 @@ pycparser==2.22
 pyparsing==3.2.3
 python-dateutil==2.9.0.post0
 python-vlc==3.0.21203
-scipy==1.16.0
+scipy # 버전 제약을 제거하여 호환되는 최신 버전을 설치합니다.
 six==1.17.0
 sounddevice==0.5.2

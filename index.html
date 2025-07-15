@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>✨ 트로트 제스처 플레이어</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* --- 기본 & 레이아웃 --- */
+    :root {
+      --bg-color: #1a1a1a;
+      --card-color: #2c2c2c;
+      --text-color: #f0f0f0;
+      --primary-color: #00e091;
+      --font-family: 'Noto Sans KR', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: var(--font-family);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .main-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 30px;
+      justify-content: center;
+      align-items: flex-start;
+      max-width: 1000px;
+    }
+
+    .player-column, .guide-column {
+      background-color: var(--card-color);
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+    
+    .player-column { flex: 2; min-width: 540px; }
+    .guide-column { flex: 1; min-width: 300px; }
+
+    h1 {
+      margin-top: 0;
+      font-weight: 700;
+      color: var(--primary-color);
+    }
+    
+    p { color: #aaa; margin-bottom: 25px; }
+
+    /* --- 플레이어 & 비디오 --- */
+    #container {
+      position: relative;
+      display: inline-block;
+      margin-top: 20px;
+      border-radius: 8px;
+      overflow: hidden; /* 로딩 오버레이를 위해 추가 */
+    }
+
+    #video, #canvas { border-radius: 8px; }
+    #canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
+    
+    #status {
+      margin-top: 15px;
+      font-size: 1.1em;
+      font-weight: bold;
+      height: 2em;
+      line-height: 2em;
+      color: #fff;
+    }
+
+    /* --- 오디오 & 파일 입력 버튼 커스텀 --- */
+    audio { 
+      margin-top: 10px; 
+      width: 100%;
+      /* 최신 브라우저에서 오디오 컨트롤 색상 테마 지정 */
+      color-scheme: dark;
+    }
+
+    #fileInput { display: none; }
+    .file-label {
+      background-color: var(--primary-color);
+      color: #111;
+      padding: 12px 25px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      display: inline-block;
+      transition: background-color 0.3s;
+    }
+    .file-label:hover { background-color: #00c781; }
+    #fileName {
+      margin-left: 15px;
+      color: #ccc;
+      font-size: 0.9em;
+    }
+
+    /* --- 제스처 가이드 --- */
+    .guide-column h2 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--primary-color);
+      padding-bottom: 10px;
+    }
+    .gesture-list {
+      list-style: none;
+      padding: 0;
+      text-align: left;
+    }
+    .gesture-list li {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      font-size: 1.1em;
+    }
+    .gesture-icon {
+      font-size: 2.2em;
+      margin-right: 20px;
+      width: 50px;
+      text-align: center;
+    }
+
+    /* --- 로딩 애니메이션 --- */
+    #loader {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      display: none; /* 평소엔 숨김 */
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 5px solid #555;
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+  </style>
+</head>
+<body>
+
+  <div class="main-container">
+    <div class="player-column">
+      <h1>✨ 트로트 제스처 플레이어</h1>
+      <p>아래 버튼으로 음악 파일을 선택하면 웹캠이 시작됩니다.</p>
+      
+      <div>
+        <label for="fileInput" class="file-label">음악 파일 선택</label>
+        <span id="fileName">선택된 파일 없음</span>
+      </div>
+      <input type="file" id="fileInput" accept=".mp3,.wav" />
+
+      <div id="container">
+        <div id="loader">
+          <div class="spinner"></div>
+        </div>
+        <video id="video" width="480" height="360" autoplay muted playsinline></video>
+        <canvas id="canvas" width="480" height="360"></canvas>
+      </div>
+      <div id="status">음악 파일을 선택해 주세요.</div>
+      <audio id="audio" controls></audio>
+    </div>
+
+    <div class="guide-column">
+      <h2>🎵 제스처 안내</h2>
+      <ul class="gesture-list">
+        <li><span class="gesture-icon">✊</span> <div><strong>주먹:</strong> 음악 재생 / 일시정지</div></li>
+        <li><span class="gesture-icon">🖐️</span> <div><strong>손바닥:</strong> 1.5배속으로 재생</div></li>
+        <li><span class="gesture-icon">👍</span> <div><strong>엄지척:</strong> 2.0배속으로 재생</div></li>
+        <li><span class="gesture-icon">🤙</span> <div><strong>새끼손가락:</strong> 1.0배속(기본)으로 재생</div></li>
+      </ul>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+  
+  <script>
+    // 기존과 동일한 JS 코드 (로딩 및 파일 이름 표시 로직만 추가)
+    const videoElement = document.getElementById('video');
+    const canvasElement = document.getElementById('canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const audioElement = document.getElementById('audio');
+    const statusDiv = document.getElementById('status');
+    const fileInput = document.getElementById('fileInput');
+    const fileNameSpan = document.getElementById('fileName');
+    const loader = document.getElementById('loader');
+    
+    let lastGestureTime = 0;
+    let currentSpeed = 1.0;
+    let isCameraStarted = false;
+
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) {
+        fileNameSpan.textContent = "선택된 파일 없음";
+        return;
+      }
+      fileNameSpan.textContent = file.name;
+      statusDiv.textContent = "음악 파일 준비 중...";
+
+      if (!isCameraStarted) {
+        statusDiv.textContent = "카메라 시작 중...";
+        await camera.start();
+        isCameraStarted = true;
+      }
+      
+      audioElement.addEventListener('canplaythrough', () => {
+        statusDiv.textContent = `음악 파일 준비 완료! 제스처로 제어하세요.`;
+        audioElement.play();
+      }, { once: true });
+
+      if (file.type === "audio/wav") {
+        audioElement.src = URL.createObjectURL(file);
+      } else if (file.type === "audio/mp3" || file.name.endsWith('.mp3')) {
+        loader.style.display = 'flex'; // 로딩 시작
+        statusDiv.textContent = "mp3 변환 중... (잠시 기다려주세요)";
+        const { createFFmpeg, fetchFile } = FFmpeg;
+        const ffmpeg = createFFmpeg({ log: false });
+        
+        if (!ffmpeg.isLoaded()) await ffmpeg.load();
+        ffmpeg.FS('writeFile', 'input.mp3', await fetchFile(file));
+        await ffmpeg.run('-i', 'input.mp3', 'output.wav');
+        const data = ffmpeg.FS('readFile', 'output.wav');
+        const wavBlob = new Blob([data.buffer], { type: 'audio/wav' });
+        audioElement.src = URL.createObjectURL(wavBlob);
+        statusDiv.textContent = "mp3 → wav 변환 완료!";
+        loader.style.display = 'none'; // 로딩 끝
+      } else {
+        statusDiv.textContent = "지원하지 않는 파일 형식입니다.";
+      }
+    });
+
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+    hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.7, minTrackingConfidence: 0.7 });
+    hands.onResults(onResults);
+
+    const camera = new Camera(videoElement, {
+      onFrame: async () => { await hands.send({image: videoElement}); },
+      width: 480,
+      height: 360
+    });
+    
+    function isFingerExtended(landmarks, tip, pip, threshold=0.03) { return landmarks[tip].y < landmarks[pip].y - threshold; }
+    function isFist(landmarks) { return (landmarks[8].y > landmarks[6].y + 0.03 && landmarks[12].y > landmarks[10].y + 0.03 && landmarks[16].y > landmarks[14].y + 0.03 && landmarks[20].y > landmarks[18].y + 0.03); }
+    function isOpenPalm(landmarks) { return (isFingerExtended(landmarks, 4, 3, 0.05) && isFingerExtended(landmarks, 8, 6) && isFingerExtended(landmarks, 12, 10) && isFingerExtended(landmarks, 16, 14) && isFingerExtended(landmarks, 20, 18)); }
+    function isThumbOnly(landmarks) { return (isFingerExtended(landmarks, 4, 3, 0.05) && !isFingerExtended(landmarks, 8, 6, 0.02) && !isFingerExtended(landmarks, 12, 10, 0.02) && !isFingerExtended(landmarks, 16, 14, 0.02) && !isFingerExtended(landmarks, 20, 18, 0.02)); }
+    function isPinkyOnly(landmarks) { return (!isFingerExtended(landmarks, 4, 3, 0.05) && !isFingerExtended(landmarks, 8, 6, 0.02) && !isFingerExtended(landmarks, 12, 10, 0.02) && !isFingerExtended(landmarks, 16, 14, 0.02) && isFingerExtended(landmarks, 20, 18, 0.05)); }
+    
+    function onResults(results) {
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        for (const landmarks of results.multiHandLandmarks) {
+          window.drawConnectors(canvasCtx, landmarks, window.HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 3});
+          window.drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 2});
+
+          const now = Date.now();
+          if (now - lastGestureTime < 700) continue; 
+
+          if (isFist(landmarks)) {
+            if (!audioElement.paused) { audioElement.pause(); statusDiv.textContent = "제스처: 주먹 (음악 정지)"; }
+            else { audioElement.play(); statusDiv.textContent = "제스처: 주먹 (음악 재생)"; }
+            lastGestureTime = now;
+          } else if (isOpenPalm(landmarks)) {
+            if (currentSpeed !== 1.5) { currentSpeed = 1.5; audioElement.playbackRate = currentSpeed; audioElement.play(); statusDiv.textContent = "제스처: 손바닥 (속도 1.5x)"; lastGestureTime = now; }
+          } else if (isThumbOnly(landmarks)) {
+            if (currentSpeed !== 2.0) { currentSpeed = 2.0; audioElement.playbackRate = currentSpeed; audioElement.play(); statusDiv.textContent = "제스처: 엄지 (속도 2.0x)"; lastGestureTime = now; }
+          } else if (isPinkyOnly(landmarks)) {
+            if (currentSpeed !== 1.0) { currentSpeed = 1.0; audioElement.playbackRate = currentSpeed; audioElement.play(); statusDiv.textContent = "제스처: 새끼손가락 (속도 1.0x)"; lastGestureTime = now; }
+          }
+        }
+      }
+      canvasCtx.restore();
+    }
+  </script>
+</body>
+</html>
