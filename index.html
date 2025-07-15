@@ -202,7 +202,7 @@ let isCameraStarted = false;
 let isPlaying = false;  // 재생 상태 플래그
 
 // Web Worker 경로가 배포 환경에 맞는지 반드시 확인하세요!
-const worker = new Worker('/worker.js');
+const worker = new Worker('public/worker.js'); // ✅ 올바른 경로
 
 worker.onmessage = async (e) => {
   const { type, data, error } = e.data;
